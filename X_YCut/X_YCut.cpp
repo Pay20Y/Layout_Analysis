@@ -48,13 +48,14 @@ std::vector<int> calcHistVer(Mat binaryImage){
 		histVer.push_back(0);
 	}
 
-	for(int row = 0;row < binaryImage.rows;row++){
-		const uchar* ptr = (const uchar*) binaryImage.ptr(row);
-		for(int col = 0;col < binaryImage.cols;col++){
-			if(*ptr > 0){
+	for(int col = 0;col < binaryImage.cols;col++){
+		
+		for(int row = 0;row < binaryImage.rows;row++){
+			const uchar* ptr = (const uchar*) binaryImage.ptr(row);
+			if(ptr[col] > 0){
 				histVer[col]++;
 			}
-			ptr++;
+			
 		}
 	}
 	cout<<histVer.size()<<endl;
@@ -69,13 +70,12 @@ std::vector<int> calcHistHor(Mat binaryImage){
 	for(int row = 0;row < binaryImage.rows;row++){
 		histHor.push_back(0);
 	}
-	for(int col = 0;col < binaryImage.cols;col++){
-		const uchar* ptr = (const uchar*) binaryImage.ptr(col);
-		for(int row = 0;row < binaryImage.rows;row++){
-			if(*ptr > 0){
+	for(int row = 0;row < binaryImage.rows;row++){
+		const uchar* ptr = (const uchar*) binaryImage.ptr(row);
+		for(int col = 0;col < binaryImage.cols;col++){
+			if(ptr[col] > 0){
 				histHor[row]++;
 			}
-			ptr++;
 		}
 	}
 	return histHor;
