@@ -42,6 +42,7 @@ Mat binaryzation(Mat grayImage){
 std::vector<int> calcHistVer(Mat binaryImage){
 	assert(binaryImage.channels() == 1);
 
+	Mat paintX = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
 	std::vector<int> histVer;
 	histVer.reserve(binaryImage.cols);
 	for(int col = 0;col < binaryImage.cols;col++){
@@ -59,12 +60,24 @@ std::vector<int> calcHistVer(Mat binaryImage){
 		}
 	}
 	cout<<histVer.size()<<endl;
+
+	for(int col = 0;col < binaryImage.cols;col++){
+		for(int row = 0;row < histVer[col];row++){
+			uchar * ptr_x = paintX.ptr<uchar>(row);
+			ptr_x[col] = 255;
+		}
+	}
+
+	imshow("axisX!",paintX);
+	waitKey(-1);
+
 	return histVer;
 }
 
 std::vector<int> calcHistHor(Mat binaryImage){
 	assert(binaryImage.channels() == 1);
 
+	Mat paintX = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
 	std::vector<int> histHor;
 	histHor.reserve(binaryImage.rows);
 	for(int row = 0;row < binaryImage.rows;row++){
@@ -78,6 +91,17 @@ std::vector<int> calcHistHor(Mat binaryImage){
 			}
 		}
 	}
+
+	for(int row = 0;row<binaryImage.rows;row++){
+		const uchar* ptr_y = paintY.ptr<uchar>(row);
+		for(int col = 0;col < histHor[row];col++){
+			ptr_y[col] = 255;
+		}
+	}
+
+	imshow("axisY!",paintY);
+	waitKey(-1);
+
 	return histHor;
 }
 
