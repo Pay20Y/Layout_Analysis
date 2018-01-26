@@ -9,6 +9,93 @@
 using namespace std;
 using namespace cv;
 
+//Tree Structure Definition
+typedef struct STreeNode* pSTreeNode;
+typedef int TreeDataType;
+
+struct STreeNode{
+	TreeDataType data;
+	pSTreeNode pFirstChild;
+	pSTreeNode pNextBrother;
+	
+	STreeNode(TreeDataType Value){
+		data = Value;
+		pFirstChild = NULL;
+		pNextBrother = NULL;
+	}
+};
+
+class CTree{
+	public:
+		CTree();
+		CTree(TreeDataType Value);
+		//~CTree();
+	public:
+		void Insert(TreeDataType parentValue,TreeDataType Value);
+		void InsertBrother(pSTreeNode pParentNode,TreeDataType Value);
+		pSTreeNode Search(pSTreeNode pNode,TreeDataType Value);
+	public:
+		pSTreeNode pRooot;
+};
+
+CTree::CTree(){
+	pRooot = NULL;
+}
+
+CTree::CTree(TreeDataType Value){
+	pRoot = new STreeNode(Value);
+	if(pRooot == NULL)
+		return;
+}
+
+void CTree::Insert(TreeDataType parentValue,TreeDataType Value){
+	if(pRoot == NULL)
+		return;
+	pSTreeNode pFindNode = Search(pRoot,parentValue);
+	if(pFindNode == NULL)
+		return;
+	if(pFindNode->pFirstChild == NULL){
+		pFindNode->pFirstChild = new STreeNode(Value);
+		return;
+	}else{
+		InsertBrother(pFindNode->pFirstChild,Value);
+		return;
+	}
+}
+
+void CTree::InsertBrother(pSTreeNode pBrotherNode,TreeData Value){
+	if(pBrotherNode->pNextBrother != NULL)
+		InsertBrother(pBrotherNode->pNextBrother,Value);
+	else{
+		pBrotherNode->pNextBrother = new STreeNode(Value);
+		return;
+	}
+}
+
+pSTreeNode CTree::Search(pSTreeNode pNode,TreeDataType Value){
+	if(pNode == NULL)
+		return NULL;
+	
+	if(pNode->data == Value)
+		return pNode;
+	
+	if(pNode->pFirstChild == NULL && pNode->pNextBrother == NULL)
+		return NULL;
+	else{
+		if(pNode->pFirstChild != NULL){
+			pSTreeNode pNodeTemp = Search(pNode->pFirstChild,Value);
+			if(pNodeTemp != NULL)
+				return pNodeTemp;
+			else{
+				return Search(pNode->pNextBrother,Value);
+			}
+		}else
+			return Search(pNode->pNextBrother,Value);
+	}
+}
+// Tree Structure Definition end!
+
+
 Mat loadImage(string filepath){
 	Mat image = imread(filepath);
 	
@@ -105,6 +192,52 @@ std::vector<int> calcHistHor(Mat binaryImage){
 	return histHor;
 }
 
+vector<int> shrinkHist(vector<int>& hist){
+	vector<int> thinHist;
+	thinHist.reserve(hist.size());
+	
+	int cursor1 = 0;
+	int cursor2 = hist.size() - 1;
+	
+	for(vector<int>::const_iterator it1 = hist.begin();it1 != hist.end();it1++){		
+		if(*it1 != 0){
+			break;
+		}
+		cursor1++;
+	}
+	for(vector<int>::const_iterator it2 = hist.end();it2 != hist.begin();it2--){
+		if(*it2 != 0){
+			break;
+		}
+		cursor2--;
+	}
+	
+	for(int i = cursor1+1;i < cursor2;i++){
+		thinHist.push_back(hist[i]);
+	}
+	
+	return thinHist;
+}
+
+int countZero(vector<int>& hist){
+	int cursor1 = 0;
+	int cursor2 = 0;
+	for(vector<int>::const_iterator it1 = hist.begin();it1 != hist.end();it1++){
+		if(hist[cursor1] == 0){
+			cursor2 = cursor1 + 1;
+			while((hist[cursor2] == 0)){
+				cursor2++;
+			}
+		}
+	}
+}
+
+
+void makeTree(){
+	CTree docTree = CTree(1);
+	
+}
+
 int main(){
 	// preprocess gray-scale binarylization
 	Mat input = loadImage("1.png");
@@ -117,7 +250,6 @@ int main(){
 	std::vector<int> histVer = calcHistVer(binaryImageReg);	
 	cout<<"histHor's size is: "<<histHor.size()<<endl;
 	cout<<"histVer's size is: "<<histVer.size()<<endl;
-
 	
 	
 }
