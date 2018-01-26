@@ -77,7 +77,7 @@ std::vector<int> calcHistVer(Mat binaryImage){
 std::vector<int> calcHistHor(Mat binaryImage){
 	assert(binaryImage.channels() == 1);
 
-	Mat paintX = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
+	Mat paintY = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
 	std::vector<int> histHor;
 	histHor.reserve(binaryImage.rows);
 	for(int row = 0;row < binaryImage.rows;row++){
@@ -93,7 +93,7 @@ std::vector<int> calcHistHor(Mat binaryImage){
 	}
 
 	for(int row = 0;row<binaryImage.rows;row++){
-		const uchar* ptr_y = paintY.ptr<uchar>(row);
+		uchar* ptr_y = paintY.ptr<uchar>(row);
 		for(int col = 0;col < histHor[row];col++){
 			ptr_y[col] = 255;
 		}
@@ -106,22 +106,18 @@ std::vector<int> calcHistHor(Mat binaryImage){
 }
 
 int main(){
+	// preprocess gray-scale binarylization
 	Mat input = loadImage("1.png");
 	Mat grayImage = convert2gray(input);
 	Mat binaryImage = binaryzation(grayImage);
 	Mat binaryImageReg = ~binaryImage;
+
+	// projection on axis x & y
 	std::vector<int> histHor = calcHistHor(binaryImageReg);
-	std::vector<int> histVer = calcHistVer(binaryImageReg);
-	
+	std::vector<int> histVer = calcHistVer(binaryImageReg);	
 	cout<<"histHor's size is: "<<histHor.size()<<endl;
-	for(std::vector<int>::const_iterator it1 = histHor.begin();it1 != histHor.end();it1++){
-		cout<<*it1<<" ";
-	}
-	cout<<endl;
 	cout<<"histVer's size is: "<<histVer.size()<<endl;
-	for(std::vector<int>::const_iterator it2 = histVer.begin();it2 != histVer.end();it2++){
-		cout<<*it2<<" ";
-	}
-	cout<<endl;
+
+	
 	
 }
