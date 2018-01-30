@@ -7,7 +7,7 @@
 #include <string>
 
 using namespace std;
-using namespace cv;
+using namespace cv;	
 
 void printFunc(Mat input){
 	for(int row = 0;row < input.rows;row++){
@@ -160,9 +160,93 @@ std::vector<Rect> largestComp(Mat dilateImage){
 	return boundingRects;
 }
 
-int main(){
+/*
+std::vector<int> projectOperation(Rect rect,Mat binaryImage){
+	Mat paintY = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
+	std::vector<int> histHor;
+	histHor.reserve(binaryImage.rows);
+	for(int row = 0;row < rect.height;row++){
+		histHor.push_back(0);
+	}
+	for(int row = rect.tl().y;row < rect.br().y;row++){
+		const uchar* ptr = (const uchar*) binaryImage.ptr(row);
+		for(int col = rect.tl().x;col < rect.br().x;col++){
+			if(ptr[col] > 0){
+				histHor[row - rect.tl().y]++;
+			}
+		}
+	}
+
+	for(int row = rect.tl().y;row < rect.br().y;row++){
+		uchar* ptr_y = paintY.ptr<uchar>(row);
+		for(int col = 0;col < histHor[row - rect.tl().y];col++){
+			ptr_y[col] = 255;
+		}
+	}
+
+	imshow("axisY!",paintY);
+	waitKey(-1);
+
+	return histHor;
+}
+*/
+
+std::vector<Mat> cropImage(Mat& input,std::vector<Rect>& cropRects){
+	std::vector<Mat> cropImages;
+	cropImages.reserve(cropRects.size());
+
+	for(std::vector<Rect>::const_iterator itr = cropRects.begin();itr != cropRects.end();itr++){
+		Mat cutImage = Mat(input,*itr);
+		cropImages.push_back(cutImage);
+	}
+
+	return cropImages;
+}
+
+/*
+void projectOperation(std::vector<Rect>& componentRects,Mat binaryImage){
+	Mat paintY = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
+	for(std::vector<Rect>::const_iterator itr = componentRects.begin();itr != componentRects.end();itr++){	
+		std::vector<int> histHor;
+		histHor.reserve(binaryImage.rows);
+		for(int row = 0;row < itr->height;row++){
+			histHor.push_back(0);
+		}
+		for(int row = itr->tl().y;row < itr->br().y;row++){
+			const uchar* ptr = (const uchar*) binaryImage.ptr(row);
+			for(int col = itr->tl().x;col < itr->br().x;col++){
+				if(ptr[col] > 0){
+					histHor[row - itr->tl().y]++;
+				}
+			}
+		}
+
+		for(int row = itr->tl().y;row < itr->br().y;row++){
+			uchar* ptr_y = paintY.ptr<uchar>(row);
+			for(int col = 0;col < histHor[row - itr->tl().y];col++){
+				ptr_y[col] = 255;
+			}
+		}
+		histHor.clear();
+	}
+	imshow("axisY!",paintY);
+	waitKey(-1);
+
+	// return histHor;
+}
+*/
+
+int main(int argc, char ** argv){
+
+	if(argc != 2){
+		cout<<"usage: ./RLSA XXX.jpg"<<endl;
+		return -1;
+	}
+
 	// load the input image
-	Mat input = loadImage("1.png");
+	string filepath = argv[1];
+	Mat input = loadImage("sample/" + filepath);
+	Mat inputCopy = input.clone();
 	// convert to gray-scale
 	Mat grayImage = convert2gray(input);
 	// binaryzation
@@ -178,17 +262,29 @@ int main(){
 	// paper suggest the times is 2
 	Mat dilateImage = doDilation(afterSmooth,4);
 	// show the result
+
+	Mat afterSmooth2show = 255 * afterSmooth;
+	Mat dilateImage2show = 255 * dilateImage;
 	std::vector<Rect> componentRects = largestComp(dilateImage);
+	// projectOperation(componentRects[0],binaryImage);
+	std::vector<Mat> cutImages = cropImage(inputCopy,componentRects);
+
+	int index = 0;
+	for(std::vector<Mat>::const_iterator itm = cutImages.begin();itm != cutImages.end();itm++){
+		imwrite("result/" + to_string(index) + ".jpg",*itm);
+		index++;
+	}
+
 	cout<<"generate the result..."<<endl;
 	Mat result = plotRect(input,componentRects);
 	Mat stepResult(2 * input.rows + 10,2 * input.cols + 10,CV_8UC1);
 	grayImage.copyTo(stepResult(Rect(0,0,grayImage.cols,grayImage.rows)));
-	(255 * afterSmooth).copyTo(stepResult(Rect(input.cols + 10,0,afterSmooth.cols,afterSmooth.rows)));
-	(255 * dilateImage).copyTo(stepResult(Rect(0,input.rows + 10,dilateImage.cols,dilateImage.rows)));
+	afterSmooth2show.copyTo(stepResult(Rect(input.cols + 10,0,afterSmooth.cols,afterSmooth.rows)));
+	dilateImage2show.copyTo(stepResult(Rect(0,input.rows + 10,dilateImage.cols,dilateImage.rows)));
 	result.copyTo(stepResult(Rect(input.cols + 10,input.rows + 10,result.cols,result.rows)));
 	// imshow("reuslt!",stepResult);
 	// imshow("reuslt!",stepResult);
 	// waitKey(-1);
-	imwrite("1.jpg",stepResult);
+	imwrite("result/temp.jpg",stepResult);
 	cout<<"done!"<<endl;
 }
