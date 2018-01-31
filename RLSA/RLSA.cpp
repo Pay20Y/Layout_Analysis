@@ -141,7 +141,6 @@ Mat plotRect(Mat& input,std::vector<Rect> inputRects){
 		}
 	}
 	return rectImage;
-
 }
 
 std::vector<Rect> largestComp(Mat dilateImage){
@@ -260,7 +259,7 @@ int main(int argc, char ** argv){
 	Mat afterSmooth = afterSmoothVer & afterSmoothHor;
 	// dilation operation 4 times with the kernal(3,3)
 	// paper suggest the times is 2
-	Mat dilateImage = doDilation(afterSmooth,4);
+	Mat dilateImage = doDilation(afterSmooth,5);
 	// show the result
 
 	Mat afterSmooth2show = 255 * afterSmooth;
@@ -269,6 +268,7 @@ int main(int argc, char ** argv){
 	// projectOperation(componentRects[0],binaryImage);
 	std::vector<Mat> cutImages = cropImage(inputCopy,componentRects);
 
+	
 	int index = 0;
 	for(std::vector<Mat>::const_iterator itm = cutImages.begin();itm != cutImages.end();itm++){
 		imwrite("result/" + to_string(index) + ".jpg",*itm);
@@ -276,7 +276,8 @@ int main(int argc, char ** argv){
 	}
 
 	cout<<"generate the result..."<<endl;
-	Mat result = plotRect(input,componentRects);
+	//Mat result = plotRect(input,componentRects);
+	Mat result = Mat::zeros(input.size(),CV_8UC1);
 	Mat stepResult(2 * input.rows + 10,2 * input.cols + 10,CV_8UC1);
 	grayImage.copyTo(stepResult(Rect(0,0,grayImage.cols,grayImage.rows)));
 	afterSmooth2show.copyTo(stepResult(Rect(input.cols + 10,0,afterSmooth.cols,afterSmooth.rows)));
