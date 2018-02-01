@@ -57,10 +57,6 @@ Mat digStorage(Mat binaryImage){
 Mat lengthSmoothHor(Mat digitImage , int thresholdC){
 	Mat digitImageHor = digitImage.clone();
 	for(int row = 0;row < digitImageHor.rows;row++){
-		// cout<<"Now process Row-"<<row<<endl;
-		// const uchar * ptr = (const uchar *)digitImage.ptr(row);
-		// uchar * cursor1 = (uchar *)digitImageHor.ptr(row);
-		// uchar * cursor2 = (uchar *)digitImageHor.ptr(row);
 		int cursor1 = 0;
 		int cursor2 = 0;
 		for(int col = 0;col < digitImageHor.cols;){
@@ -69,8 +65,6 @@ Mat lengthSmoothHor(Mat digitImage , int thresholdC){
 				while(((int)digitImageHor.at<uchar>(row,cursor2) != 1) && (cursor2 < digitImageHor.cols)){
 					cursor2 ++;
 				}
-				// cout<<"the distance between 0 and 1 is: "<<(cursor2 - cursor1)<<endl;
-				// cout<<"cursor1: "<<cursor1<<"  "<<"cursor2: "<<cursor2<<endl;
 				if((cursor2 - cursor1) <= thresholdC){
 					while(cursor1 < cursor2){
 						digitImageHor.at<uchar>(row,cursor1) = 1;
@@ -160,45 +154,12 @@ std::vector<Rect> largestComp(Mat dilateImage){
 	std::vector<Rect> boundingRects;
 	boundingRects.reserve(contours.size());
 
-	// std::vector<std::vector<Point>> components;
-	// components.reserve(contours.size());
 	for(std::vector<std::vector<Point>>::const_iterator it = contours.begin();it != contours.end();it++){
 		Rect bRect = boundingRect(*it);
 		boundingRects.push_back(bRect);
 	}
 	return boundingRects;
 }
-
-/*
-std::vector<int> projectOperation(Rect rect,Mat binaryImage){
-	Mat paintY = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
-	std::vector<int> histHor;
-	histHor.reserve(binaryImage.rows);
-	for(int row = 0;row < rect.height;row++){
-		histHor.push_back(0);
-	}
-	for(int row = rect.tl().y;row < rect.br().y;row++){
-		const uchar* ptr = (const uchar*) binaryImage.ptr(row);
-		for(int col = rect.tl().x;col < rect.br().x;col++){
-			if(ptr[col] > 0){
-				histHor[row - rect.tl().y]++;
-			}
-		}
-	}
-
-	for(int row = rect.tl().y;row < rect.br().y;row++){
-		uchar* ptr_y = paintY.ptr<uchar>(row);
-		for(int col = 0;col < histHor[row - rect.tl().y];col++){
-			ptr_y[col] = 255;
-		}
-	}
-
-	imshow("axisY!",paintY);
-	waitKey(-1);
-
-	return histHor;
-}
-*/
 
 std::vector<Mat> cropImage(Mat& input,std::vector<Rect>& cropRects){
 	std::vector<Mat> cropImages;
@@ -211,39 +172,6 @@ std::vector<Mat> cropImage(Mat& input,std::vector<Rect>& cropRects){
 
 	return cropImages;
 }
-
-/*
-void projectOperation(std::vector<Rect>& componentRects,Mat binaryImage){
-	Mat paintY = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
-	for(std::vector<Rect>::const_iterator itr = componentRects.begin();itr != componentRects.end();itr++){	
-		std::vector<int> histHor;
-		histHor.reserve(binaryImage.rows);
-		for(int row = 0;row < itr->height;row++){
-			histHor.push_back(0);
-		}
-		for(int row = itr->tl().y;row < itr->br().y;row++){
-			const uchar* ptr = (const uchar*) binaryImage.ptr(row);
-			for(int col = itr->tl().x;col < itr->br().x;col++){
-				if(ptr[col] > 0){
-					histHor[row - itr->tl().y]++;
-				}
-			}
-		}
-
-		for(int row = itr->tl().y;row < itr->br().y;row++){
-			uchar* ptr_y = paintY.ptr<uchar>(row);
-			for(int col = 0;col < histHor[row - itr->tl().y];col++){
-				ptr_y[col] = 255;
-			}
-		}
-		histHor.clear();
-	}
-	imshow("axisY!",paintY);
-	waitKey(-1);
-
-	// return histHor;
-}
-*/
 
 int main(int argc, char ** argv){
 
@@ -270,12 +198,10 @@ int main(int argc, char ** argv){
 	// dilation operation 4 times with the kernal(3,3)
 	// paper suggest the times is 2
 	Mat dilateImage = doDilation(afterSmooth,5);
-	// show the result
 
 	Mat afterSmooth2show = 255 * afterSmooth;
 	Mat dilateImage2show = 255 * dilateImage;
 	std::vector<Rect> componentRects = largestComp(dilateImage);
-	// projectOperation(componentRects[0],binaryImage);
 	std::vector<Mat> cutImages = cropImage(inputCopy,componentRects);
 
 	
@@ -286,18 +212,13 @@ int main(int argc, char ** argv){
 	}
 
 	cout<<"generate the result..."<<endl;
-	//Mat result = plotRect(input,componentRects);
 	Mat result = getBlock(input,componentRects);
-	// Mat result = Mat::zeros(input.size(),CV_8UC1);
 	Mat stepResult(2 * input.rows + 10,2 * input.cols + 10,CV_8UC1);
 	grayImage.copyTo(stepResult(Rect(0,0,grayImage.cols,grayImage.rows)));
 	afterSmooth2show.copyTo(stepResult(Rect(input.cols + 10,0,afterSmooth.cols,afterSmooth.rows)));
 	dilateImage2show.copyTo(stepResult(Rect(0,input.rows + 10,dilateImage.cols,dilateImage.rows)));
 	cvtColor(stepResult,stepResult,CV_GRAY2RGB);
 	result.copyTo(stepResult(Rect(input.cols + 10,input.rows + 10,result.cols,result.rows)));
-	// imshow("reuslt!",stepResult);
-	// imshow("reuslt!",stepResult);
-	// waitKey(-1);
 	imwrite("result/temp.jpg",stepResult);
 	cout<<"done!"<<endl;
 }
