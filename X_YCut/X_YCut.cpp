@@ -9,7 +9,6 @@
 using namespace std;
 using namespace cv;
 
-/*
 //Tree Structure Definition
 typedef struct STreeNode* pSTreeNode;
 typedef int TreeDataType;
@@ -36,16 +35,16 @@ class CTree{
 		void InsertBrother(pSTreeNode pParentNode,TreeDataType Value);
 		pSTreeNode Search(pSTreeNode pNode,TreeDataType Value);
 	public:
-		pSTreeNode pRooot;
+		pSTreeNode pRoot;
 };
 
 CTree::CTree(){
-	pRooot = NULL;
+	pRoot = NULL;
 }
 
 CTree::CTree(TreeDataType Value){
 	pRoot = new STreeNode(Value);
-	if(pRooot == NULL)
+	if(pRoot == NULL)
 		return;
 }
 
@@ -95,7 +94,7 @@ pSTreeNode CTree::Search(pSTreeNode pNode,TreeDataType Value){
 	}
 }
 // Tree Structure Definition end!
-*/
+
 
 Mat loadImage(string filepath){
 	Mat image = imread(filepath);
@@ -287,7 +286,7 @@ void countZero(vector<int>& hist,std::vector<int>& segments1,std::vector<int>& s
 	// }
 }
 
-std::vector<Mat> cropImage(Mat binaryImage,Mat input,bool triker){
+std::vector<Mat> cropImage(Mat binaryImage/*,Mat input*/,bool triker){
 
 	// bool triker = true; // the var is to change orientation of each recursive
 	std::vector<Mat> cropMats;
@@ -300,11 +299,9 @@ std::vector<Mat> cropImage(Mat binaryImage,Mat input,bool triker){
 		std::vector<int> segments1;
 		std::vector<int> segments2;
 		
-
-
 		countZero(thinHist,segments1,segments2,cursor1,cursor2);
-
 		cout<<"countZero end!"<<endl;
+
 		if((segments1.size() > 0) && (segments2.size() > 0) && (segments1.size() == segments2.size())){
 			if(segments1.size() == segments2.size()){
 				for(int i = 0;i < segments1.size();i++){
@@ -313,7 +310,8 @@ std::vector<Mat> cropImage(Mat binaryImage,Mat input,bool triker){
 					int height = segments2[i] - segments1[i];
 					int width = binaryImage.cols;
 					Rect cropRect(x,y,width,height);
-					Mat image_cut = Mat(input,cropRect);
+					// Mat image_cut = Mat(input,cropRect);
+					Mat image_cut = Mat(binaryImage,cropRect);
 					cropMats.push_back(image_cut);
 				}
 			}else{
@@ -328,15 +326,29 @@ std::vector<Mat> cropImage(Mat binaryImage,Mat input,bool triker){
 		imshow("...",*itm);
 		waitKey(-1);
 	}*/
-
 	return cropMats;
 }
-
 /*
-void makeTree(){
-	CTree docTree = CTree(1);
-	
+void generateTree(CTree& docTree,TreeDataType parentNode,std::vector<Mat>& childImages,int& nodeIndex){
+	for(std::vector<Mat>::itc = childImages.begin();itc != childImages.end();itc++){
+		CTree.Insert(parentNode,++nodeIndex);
+	}
 }*/
+
+void makeTree(Mat binaryImage,TreeDataType parentNode,CTree& docTree,int& totalNode){
+	// CTree docTree = CTree(1);	
+	// int totalNode = 1;
+	std::vector<Mat> childImages = cropImage(binaryImage,true);
+	
+	if(childImages.size() != 0){
+		for(std::vector<Mat>::const_iterator itc = childImages.begin();itc != childImages.end();itc++){
+			docTree.Insert(parentNode,++totalNode);
+			makeTree(*itc,totalNode,docTree,++totalNode);
+		}
+	}else{
+		return;
+	}
+}
 
 int main(){
 	// preprocess gray-scale binarylization
@@ -346,8 +358,16 @@ int main(){
 	Mat binaryImage = binaryzation(grayImage);
 	Mat binaryImageReg = ~binaryImage;
 
-	std::vector<Mat> crops = cropImage(binaryImageReg,input_clone,true);
+	// std::vector<Mat> crops = cropImage(binaryImageReg,true);
 	
+	// warning!
+	// recursive construct the document tree
+
+	CTree docTree = CTree(1);
+	int totalNode = 1;
+
+	makeTree(binaryImageReg,1,docTree,totalNode);
+
 	/*
 	// projection on axis x & y
 	std::vector<int> histHor = calcHistHor(binaryImageReg);
