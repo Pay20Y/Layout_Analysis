@@ -12,6 +12,7 @@ using namespace cv;
 //Tree Structure Definition
 typedef struct STreeNode* pSTreeNode;
 typedef int TreeDataType;
+typedef pair<std::vector<Mat>,std::vector<Rect>> MatRect;
 
 struct STreeNode{
 	TreeDataType data;
@@ -34,6 +35,8 @@ class CTree{
 		void Insert(TreeDataType parentValue,TreeDataType Value);
 		void InsertBrother(pSTreeNode pParentNode,TreeDataType Value);
 		pSTreeNode Search(pSTreeNode pNode,TreeDataType Value);
+		void print();
+		void print(pSTreeNode node, int num);
 	public:
 		pSTreeNode pRoot;
 };
@@ -93,8 +96,36 @@ pSTreeNode CTree::Search(pSTreeNode pNode,TreeDataType Value){
 			return Search(pNode->pNextBrother,Value);
 	}
 }
-// Tree Structure Definition end!
 
+void CTree::print()
+{
+    print(pRoot, 0);
+}
+
+void printSpace(int num)
+{
+    int i = 0;
+    for(i = 0; i < num-3; i++)
+        cout << " ";
+
+    for(; i < num-2; ++i)
+        cout << "|";
+    for(; i < num; ++i)
+        cout << "_";
+}
+
+
+void CTree::print(pSTreeNode node, int num)
+{
+    if(node != NULL){
+        printSpace(num); 
+        cout << node->data << endl;  
+        print(node->pFirstChild, num+4);
+        print(node->pNextBrother, num);
+    }
+}
+
+// Tree Structure Definition end!
 
 Mat loadImage(string filepath){
 	Mat image = imread(filepath);
@@ -154,10 +185,8 @@ std::vector<int> calcHistVer(Mat binaryImage){
 			ptr_x[col] = 255;
 		}
 	}
-
-	imshow("axisX!",paintX);
-	waitKey(-1);
-
+	// imshow("axisX!",paintX);
+	// waitKey(-1);
 	return histVer;
 }
 
@@ -186,8 +215,8 @@ std::vector<int> calcHistHor(Mat binaryImage){
 		}
 	}
 
-	imshow("axisY!",paintY);
-	waitKey(-1);
+	// imshow("axisY!",paintY);
+	// waitKey(-1);
 
 	return histHor;
 }
@@ -195,9 +224,6 @@ std::vector<int> calcHistHor(Mat binaryImage){
 vector<int> shrinkHist(vector<int>& hist,int& cursor1,int& cursor2){
 	vector<int> thinHist;
 	thinHist.reserve(hist.size());
-	
-	// int cursor1 = 0;
-	// int cursor2 = hist.size();
 	
 	for(vector<int>::const_iterator it1 = hist.begin();it1 != hist.end();it1++){		
 		if(*it1 != 0){
@@ -225,10 +251,7 @@ void countZero(vector<int>& hist,std::vector<int>& segments1,std::vector<int>& s
 	int cursor2 = 0;
 	int preBlock = 0;
 	int preBlock_end = 0;
-	// std::vector<int> segments1;
-	// std::vector<int> segments2;
-	// Mat checkImage = Mat::zeros(binaryImage.rows,binaryImage.cols,CV_8UC1);
-	// for(vector<int>::const_iterator it1 = hist.begin();it1 != hist.end();it1++){
+
 	while((cursor2 != hist.size()) && (cursor1 != hist.size())){
 		if(hist[cursor1] == 0){
 			cursor2 = cursor1;
@@ -237,7 +260,7 @@ void countZero(vector<int>& hist,std::vector<int>& segments1,std::vector<int>& s
 				cursor2++;
 			}
 
-			if((cursor2 - cursor1 + 1) >= 30){
+			if((cursor2 - cursor1 + 1) >= 15){
 				segments1.push_back(top + preBlock - 1);
 				segments2.push_back(top + preBlock_end + 1);
 				preBlock = cursor2;
@@ -251,56 +274,34 @@ void countZero(vector<int>& hist,std::vector<int>& segments1,std::vector<int>& s
 	}
 
 	//add the last segments to vector
-	segments1.push_back(top + cursor2 - 1);
-	segments2.push_back(top +cursor1 + 1);
+	// cout<<"cursor2: "<<cursor2<<endl;
+	// segments1.push_back(top + cursor2 - 1);
+	if(cursor1 - preBlock >= 3){
+		segments1.push_back(top + preBlock - 1);
+		segments2.push_back(top + cursor1 + 1);
+	}
+	// cout<<"start: "<<segments1[0]<<"    end: "<<segments2[0]<<endl;
+ 	cout<<"segments1' size is: "<<segments1.size()<<endl;
+	cout<<"segments2' size is: "<<segments2.size()<<endl;	
 
-	/*
-	for(int i = 0;i < segments1.size();i++){
-		line(input,Point(0,segments1[i] + top),Point(input.cols,top + segments1[i]),Scalar(255,0,0));
-		line(input,Point(0,segments2[i] + top),Point(input.cols,top + segments2[i]),Scalar(255,0,0));
-	}
-	*/
-	/*
-	for(int i = 0;i < segments1.size();i++){
-		cout<<"segments1: "<<segments1[i]<<" ";
-	}
-	cout<<endl;
-	for(int i = 0;i < segments1.size();i++){
-		cout<<"segments2: "<<segments2[i]<<" ";
-	}
-	*/
-	cout<<"segments1' size is: "<<segments1.size()<<endl;
-	cout<<"segments2' size is: "<<segments2.size()<<endl;
-	
-	// imshow("lines",input);
-	// waitKey(-1);
-	/*
-	for(std::vector<int>::const_iterator it1 = segments.begin();it1 != segments.end();it1++){
-		for(int index = 0;index < binaryImage.cols;index++){
-			checkImage.at<uchar>(*it1,index) = 255;
-		}
-	}
-	imshow("segments",checkImage);
-	waitKey(-1);
-	*/
-	// }
 }
 
-std::vector<Mat> cropImage(Mat binaryImage/*,Mat input*/,bool triker){
+std::vector<Mat> cropImage(Mat binaryImage/*,Mat input*/,bool triker,int index){
 
-	// bool triker = true; // the var is to change orientation of each recursive
 	std::vector<Mat> cropMats;
-	
+	std::vector<Rect> cropRects;
+
 	if(triker){
 		std::vector<int> histHor = calcHistHor(binaryImage);
 		int cursor1 = 0;
 		int cursor2 = histHor.size();
 		std::vector<int> thinHist = shrinkHist(histHor,cursor1,cursor2);
+		
 		std::vector<int> segments1;
 		std::vector<int> segments2;
 		
 		countZero(thinHist,segments1,segments2,cursor1,cursor2);
-		cout<<"countZero end!"<<endl;
+		// cout<<"countZero end!"<<endl;
 
 		if((segments1.size() > 0) && (segments2.size() > 0) && (segments1.size() == segments2.size())){
 			if(segments1.size() == segments2.size()){
@@ -310,42 +311,73 @@ std::vector<Mat> cropImage(Mat binaryImage/*,Mat input*/,bool triker){
 					int height = segments2[i] - segments1[i];
 					int width = binaryImage.cols;
 					Rect cropRect(x,y,width,height);
+					cropRects.push_back(cropRect);
 					// Mat image_cut = Mat(input,cropRect);
 					Mat image_cut = Mat(binaryImage,cropRect);
 					cropMats.push_back(image_cut);
 				}
 			}else{
-				cout<<"error! 2 vectors' size are not equal!";
+				cout<<"error! 2 vectors' size are not equal!"<<endl;
 			}
 		}
 	}else{
+		std::vector<int> histVer = calcHistVer(binaryImage);
+		int cursor1 = 0;
+		int cursor2 = histVer.size();
+		std::vector<int> thinHist = shrinkHist(histVer,cursor1,cursor2);
+		std::vector<int> segments1;
+		std::vector<int> segments2;
 
+		countZero(thinHist,segments1,segments2,cursor1,cursor2);
+
+		if((segments1.size() > 0) && (segments2.size() > 0) && (segments1.size() == segments2.size())){
+			for(int i = 0;i < segments1.size();i++){
+				int x = segments1[i];
+				int y = 0;
+				int height = binaryImage.rows;
+				int width = segments2[i] - segments1[i];
+				Rect cropRect(x,y,width,height);
+				cropRects.push_back(cropRect);
+				Mat image_cut = Mat(binaryImage,cropRect);
+				cropMats.push_back(image_cut);
+			}
+		}else{
+			cout<<"error! 2 vectors' size are not equal!"<<endl;
+		}
+	}
+	
+	if(cropMats.size() == 1){
+		imwrite("result/" + to_string(index) + ".jpg",cropMats[0]);
 	}
 	/*
-	for(std::vector<Mat>::const_iterator itm = cropMats.begin();itm != cropMats.end();itm++){
-		imshow("...",*itm);
-		waitKey(-1);
+	if((cropMats.size() == 1) && (cropRects.size() == 1)){
+		rectangle(input,cropRects[0].tl(),cropRects[0].br(),cv::Scalar(0,0,255),1,1,0);
 	}*/
+
+	cout<<"here the end of FUNC-cropImage cropMats' size is: "<<cropMats.size()<<endl;
 	return cropMats;
 }
-/*
-void generateTree(CTree& docTree,TreeDataType parentNode,std::vector<Mat>& childImages,int& nodeIndex){
-	for(std::vector<Mat>::itc = childImages.begin();itc != childImages.end();itc++){
-		CTree.Insert(parentNode,++nodeIndex);
-	}
-}*/
 
-void makeTree(Mat binaryImage,TreeDataType parentNode,CTree& docTree,int& totalNode){
+void makeTree(Mat binaryImage,TreeDataType parentNode,CTree& docTree,int& totalNode,bool& tricker,std::vector<Mat>& leafBlocks){
+	// imshow("makeTree...",binaryImage);
+	// waitKey(-1);
 	// CTree docTree = CTree(1);	
 	// int totalNode = 1;
-	std::vector<Mat> childImages = cropImage(binaryImage,true);
-	
-	if(childImages.size() != 0){
+	std::vector<Mat> childImages = cropImage(binaryImage,tricker,totalNode);
+	// std::vector<Mat> leafImages;
+    tricker = !tricker; // row & col alternative!
+	TreeDataType parentIndex = totalNode;
+	if(childImages.size() > 1){
 		for(std::vector<Mat>::const_iterator itc = childImages.begin();itc != childImages.end();itc++){
-			docTree.Insert(parentNode,++totalNode);
-			makeTree(*itc,totalNode,docTree,++totalNode);
+			
+			docTree.Insert(parentIndex,++totalNode);
+			
+			bool innerTrick = tricker;
+			// cout<<"tricker: "<<tricker<<endl;
+			makeTree(*itc,totalNode,docTree,totalNode,innerTrick,leafBlocks);
 		}
 	}else{
+		leafBlocks.push_back(childImages[0]);		
 		return;
 	}
 }
@@ -357,31 +389,18 @@ int main(){
 	Mat grayImage = convert2gray(input);
 	Mat binaryImage = binaryzation(grayImage);
 	Mat binaryImageReg = ~binaryImage;
-
-	// std::vector<Mat> crops = cropImage(binaryImageReg,true);
 	
+	// Mat boundInput = input.clone();
 	// warning!
 	// recursive construct the document tree
-
 	CTree docTree = CTree(1);
 	int totalNode = 1;
+	bool tricker = true;
 
-	makeTree(binaryImageReg,1,docTree,totalNode);
+	std::vector<Mat> leafBlocks;
+	makeTree(binaryImageReg,1,docTree,totalNode,tricker,leafBlocks);
 
-	/*
-	// projection on axis x & y
-	std::vector<int> histHor = calcHistHor(binaryImageReg);
-	std::vector<int> histVer = calcHistVer(binaryImageReg);	
-	cout<<"histHor's size is: "<<histHor.size()<<endl;
-	cout<<"histVer's size is: "<<histVer.size()<<endl;
+	docTree.print();
 
-	// segment the image
-	std::vector<int> segments1;
-	std::vector<int> segments2;
-
-	int cursor1 = 0;
-	int cursor2 = histHor.size();
-	std::vector<int> thinHist = shrinkHist(histHor,cursor1,cursor2);	
-	countZero(thinHist,segments1,segments2,input_clone,cursor1,cursor2);
-	*/		
+	cout<<"leaf's size is: "<<leafBlocks.size()<<endl;
 }
