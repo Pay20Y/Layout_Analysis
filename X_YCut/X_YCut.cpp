@@ -5,6 +5,7 @@
 #include <opencv2/features2d.hpp> 
 #include <vector>
 #include <string>
+#include <stack>
 
 using namespace std;
 using namespace cv;
@@ -16,25 +17,30 @@ typedef pair<std::vector<Mat>,std::vector<Rect>> MatRect;
 
 struct STreeNode{
 	TreeDataType data;
+	Rect boundingRect;
 	pSTreeNode pFirstChild;
 	pSTreeNode pNextBrother;
+	pSTreeNode pParent;
 	
-	STreeNode(TreeDataType Value){
+	STreeNode(TreeDataType Value,Rect rect){
 		data = Value;
+		boundingRect = rect;
 		pFirstChild = NULL;
 		pNextBrother = NULL;
+		pParent = NULL;
 	}
 };
 
 class CTree{
 	public:
 		CTree();
-		CTree(TreeDataType Value);
+		CTree(TreeDataType Value,Rect rect);
 		//~CTree();
 	public:
-		void Insert(TreeDataType parentValue,TreeDataType Value);
-		void InsertBrother(pSTreeNode pParentNode,TreeDataType Value);
+		void Insert(TreeDataType parentValue,TreeDataType Value,Rect bRect);
+		void InsertBrother(pSTreeNode pParentNode,TreeDataType Value,Rect bRect,pSTreeNode parentNode);
 		pSTreeNode Search(pSTreeNode pNode,TreeDataType Value);
+		pSTreeNode SearchParent(pSTreeNode pNode,TreeDataType Value);
 		void print();
 		void print(pSTreeNode node, int num);
 	public:
@@ -45,32 +51,34 @@ CTree::CTree(){
 	pRoot = NULL;
 }
 
-CTree::CTree(TreeDataType Value){
-	pRoot = new STreeNode(Value);
+CTree::CTree(TreeDataType Value,Rect rect){
+	pRoot = new STreeNode(Value,rect);
 	if(pRoot == NULL)
 		return;
 }
 
-void CTree::Insert(TreeDataType parentValue,TreeDataType Value){
+void CTree::Insert(TreeDataType parentValue,TreeDataType Value,Rect bRect){
 	if(pRoot == NULL)
 		return;
 	pSTreeNode pFindNode = Search(pRoot,parentValue);
 	if(pFindNode == NULL)
 		return;
 	if(pFindNode->pFirstChild == NULL){
-		pFindNode->pFirstChild = new STreeNode(Value);
+		pFindNode->pFirstChild = new STreeNode(Value,bRect);
+		pFindNode->pFirstChild->pParent = pFindNode;
 		return;
 	}else{
-		InsertBrother(pFindNode->pFirstChild,Value);
+		InsertBrother(pFindNode->pFirstChild,Value,bRect,pFindNode);
 		return;
 	}
 }
 
-void CTree::InsertBrother(pSTreeNode pBrotherNode,TreeDataType Value){
+void CTree::InsertBrother(pSTreeNode pBrotherNode,TreeDataType Value,Rect bRect,pSTreeNode parentNode){
 	if(pBrotherNode->pNextBrother != NULL)
-		InsertBrother(pBrotherNode->pNextBrother,Value);
+		InsertBrother(pBrotherNode->pNextBrother,Value,bRect,parentNode);
 	else{
-		pBrotherNode->pNextBrother = new STreeNode(Value);
+		pBrotherNode->pNextBrother = new STreeNode(Value,bRect);
+		pBrotherNode->pNextBrother->pParent = parentNode;
 		return;
 	}
 }
@@ -92,6 +100,27 @@ pSTreeNode CTree::Search(pSTreeNode pNode,TreeDataType Value){
 			else{
 				return Search(pNode->pNextBrother,Value);
 			}
+		}else
+			return Search(pNode->pNextBrother,Value);
+	}
+}
+
+pSTreeNode CTree::SearchParent(pSTreeNode pNode,TreeDataType Value){
+	if(pNode == NULL)
+		return NULL;
+	if(pNode->data == Value)
+		return pNode;
+	if(pNode->pFirstChild == NULL && pNode->pNextBrother == NULL)
+		return NULL;
+	else{
+		if(pNode->pFirstChild != NULL){
+			pSTreeNode pNodeTemp = Search(pNode->pFirstChild,Value);
+				if(pNodeTemp != NULL)
+					return pNode->pFirstChild;
+				else{
+					return Search(pNode->pNextBrother,Value);
+				}
+
 		}else
 			return Search(pNode->pNextBrother,Value);
 	}
@@ -286,10 +315,11 @@ void countZero(vector<int>& hist,std::vector<int>& segments1,std::vector<int>& s
 
 }
 
-std::vector<Mat> cropImage(Mat binaryImage/*,Mat input*/,bool triker,int index){
+std::vector<Mat> cropImage(Mat binaryImage/*,Mat input*/,bool triker,int index,std::vector<Rect>& cropRects){
 
 	std::vector<Mat> cropMats;
-	std::vector<Rect> cropRects;
+	// std::vector<Rect> cropRects;
+	// std::vector<Point> blockPoints;
 
 	if(triker){
 		std::vector<int> histHor = calcHistHor(binaryImage);
@@ -310,6 +340,7 @@ std::vector<Mat> cropImage(Mat binaryImage/*,Mat input*/,bool triker,int index){
 					int x = 0;
 					int height = segments2[i] - segments1[i];
 					int width = binaryImage.cols;
+
 					Rect cropRect(x,y,width,height);
 					cropRects.push_back(cropRect);
 					// Mat image_cut = Mat(input,cropRect);
@@ -358,33 +389,92 @@ std::vector<Mat> cropImage(Mat binaryImage/*,Mat input*/,bool triker,int index){
 	return cropMats;
 }
 
-void makeTree(Mat binaryImage,TreeDataType parentNode,CTree& docTree,int& totalNode,bool& tricker,std::vector<Mat>& leafBlocks){
+void makeTree(Mat binaryImage,TreeDataType parentNode,CTree& docTree,int& totalNode,bool& tricker,std::vector<Mat>& leafBlocks,std::vector<int>& leafNodes){
 	// imshow("makeTree...",binaryImage);
 	// waitKey(-1);
 	// CTree docTree = CTree(1);	
 	// int totalNode = 1;
-	std::vector<Mat> childImages = cropImage(binaryImage,tricker,totalNode);
+	std::vector<Rect> childBrects;
+	std::vector<Mat> childImages = cropImage(binaryImage,tricker,totalNode,childBrects);
 	// std::vector<Mat> leafImages;
     tricker = !tricker; // row & col alternative!
 	TreeDataType parentIndex = totalNode;
 	if(childImages.size() > 1){
+		int index = 0;
 		for(std::vector<Mat>::const_iterator itc = childImages.begin();itc != childImages.end();itc++){
 			
-			docTree.Insert(parentIndex,++totalNode);
+			docTree.Insert(parentIndex,++totalNode,childBrects[index]);
 			
 			bool innerTrick = tricker;
 			// cout<<"tricker: "<<tricker<<endl;
-			makeTree(*itc,totalNode,docTree,totalNode,innerTrick,leafBlocks);
+			makeTree(*itc,totalNode,docTree,totalNode,innerTrick,leafBlocks,leafNodes);
+			index++;
 		}
 	}else{
-		leafBlocks.push_back(childImages[0]);		
+		leafBlocks.push_back(childImages[0]);	
+		leafNodes.push_back(totalNode);	
 		return;
 	}
 }
 
-int main(){
+std::vector<Rect> boundBlock(CTree& docTree,std::vector<int>& leafNodes){
+	std::vector<Rect> boundRects;
+	for(std::vector<int>::const_iterator it = leafNodes.begin();it != leafNodes.end();it++){
+		cout<<"Now process "<<*it<<endl;
+		pSTreeNode leafTreeNode = docTree.Search(docTree.pRoot,*it);
+		
+		int x = leafTreeNode->boundingRect.x;
+		int y = leafTreeNode->boundingRect.y;
+		int width = leafTreeNode->boundingRect.width;
+		int height = leafTreeNode->boundingRect.height;
+		
+		// pSTreeNode parentTreeNode = leafTreeNode->pParent;
+		pSTreeNode parentTreeNode = leafTreeNode;
+		
+		// x += parentTreeNode->boundingRect.x;
+		// y += parentTreeNode->boundingRect.y;
+
+		while(parentTreeNode->pParent != NULL){
+			parentTreeNode = parentTreeNode->pParent;
+			cout<<"parent is: "<<parentTreeNode->data<<endl;
+			x += parentTreeNode->boundingRect.x;
+			y += parentTreeNode->boundingRect.y; 
+		}
+		Rect targetRect(x,y,width,height);
+		boundRects.push_back(targetRect);
+	}
+	cout<<"boundingRect's size is: "<<boundRects.size()<<endl;
+	return boundRects;
+}
+
+/*
+void boundBlock(CTree& docTree){
+	std::vector<Rect> bRects;
+	stack<pSTreeNode> s;
+	pSTreeNode root = docTree.pRoot;
+	s.push(root);
+	while(){
+		pSTreeNode top = s.top();
+		if(top.pFirstChild == NULL){
+			bRects.push_back(pFirstChild.boundingRect);
+			s.pop();
+		}
+
+	}
+
+}*/
+
+int main(int argc, char ** argv){
+	if(argc != 2){
+		cout<<"usage: ./X_YCut XXX.jpg"<<endl;
+		return -1;
+	}
+
+	// load the input image
+	string filepath = argv[1];
 	// preprocess gray-scale binarylization
-	Mat input = loadImage("1.png");
+	// Mat input = loadImage("1.png");
+	Mat input = loadImage(filepath);
 	Mat input_clone = input.clone();
 	Mat grayImage = convert2gray(input);
 	Mat binaryImage = binaryzation(grayImage);
@@ -393,14 +483,24 @@ int main(){
 	// Mat boundInput = input.clone();
 	// warning!
 	// recursive construct the document tree
-	CTree docTree = CTree(1);
+	Rect rootRect(0,0,input.cols,input.rows);
+	CTree docTree = CTree(1,rootRect);
 	int totalNode = 1;
 	bool tricker = true;
 
 	std::vector<Mat> leafBlocks;
-	makeTree(binaryImageReg,1,docTree,totalNode,tricker,leafBlocks);
+	std::vector<int> leafNodes;
+	makeTree(binaryImageReg,1,docTree,totalNode,tricker,leafBlocks,leafNodes);
 
 	docTree.print();
 
 	cout<<"leaf's size is: "<<leafBlocks.size()<<endl;
+	std::vector<Rect> blockRects = boundBlock(docTree,leafNodes);
+
+	for(std::vector<Rect>::const_iterator itr = blockRects.begin();itr!= blockRects.end();itr++){
+		rectangle(input_clone,itr->tl(),itr->br(),cv::Scalar(0,0,255),1,1,0);
+	}
+	imshow("result!",input_clone);
+	waitKey(-1);
+	imwrite("result.jpg",input_clone);
 }
