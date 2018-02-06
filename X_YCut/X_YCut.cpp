@@ -396,10 +396,13 @@ void makeTree(Mat binaryImage,TreeDataType parentNode,CTree& docTree,int& totalN
 	// int totalNode = 1;
 	std::vector<Rect> childBrects;
 	std::vector<Mat> childImages = cropImage(binaryImage,tricker,totalNode,childBrects);
+	// std::vector<Mat> childImages2 = cropImage(binaryImage,!tricker,totalNode,childBrects);
+	// bool rowcol = true;
 	// std::vector<Mat> leafImages;
     tricker = !tricker; // row & col alternative!
 	TreeDataType parentIndex = totalNode;
 	if(childImages.size() > 1){
+		// rowcol = true;
 		int index = 0;
 		for(std::vector<Mat>::const_iterator itc = childImages.begin();itc != childImages.end();itc++){
 			
@@ -410,11 +413,30 @@ void makeTree(Mat binaryImage,TreeDataType parentNode,CTree& docTree,int& totalN
 			makeTree(*itc,totalNode,docTree,totalNode,innerTrick,leafBlocks,leafNodes);
 			index++;
 		}
-	}else{
-		leafBlocks.push_back(childImages[0]);	
-		leafNodes.push_back(totalNode);	
-		return;
+	}/*else if(childImages2.size() > 1){
+		rowcol = false;
+		int index = 0;
+		for(std::vector<Mat>::const_iterator itc = childImages2.begin();itc != childImages2.end();itc++){
+			
+			docTree.Insert(parentIndex,++totalNode,childBrects[index]);
+			
+			bool innerTrick = tricker;
+			// cout<<"tricker: "<<tricker<<endl;
+			makeTree(*itc,totalNode,docTree,totalNode,innerTrick,leafBlocks,leafNodes);
+			index++;
+		}
+	}*/else{
+		//if(rowcol){
+			leafBlocks.push_back(childImages[0]);	
+			leafNodes.push_back(totalNode);	
+			return;
+		//}else{
+		//	leafBlocks.push_back(childImages2[0]);	
+		//	leafNodes.push_back(totalNode);	
+		//	return;
+		// }	
 	}
+	
 }
 
 std::vector<Rect> boundBlock(CTree& docTree,std::vector<int>& leafNodes){
@@ -492,15 +514,35 @@ int main(int argc, char ** argv){
 	std::vector<int> leafNodes;
 	makeTree(binaryImageReg,1,docTree,totalNode,tricker,leafBlocks,leafNodes);
 
-	docTree.print();
+	if(leafBlocks.size() <= 1){
+		Rect rootRect2(0,0,input.cols,input.rows);
+		CTree docTree2 = CTree(1,rootRect2);
+		int totalNode2 = 1;
+		bool tricker2 = false;
+		std::vector<Mat> leafBlocks2;
+		std::vector<int> leafNodes2;
+		makeTree(binaryImageReg,1,docTree2,totalNode2,tricker2,leafBlocks2,leafNodes2);
+		docTree2.print();
+		cout<<"leaf's size is: "<<leafBlocks2.size()<<endl;
+		std::vector<Rect> blockRects = boundBlock(docTree2,leafNodes2);
+		for(std::vector<Rect>::const_iterator itr = blockRects.begin();itr!= blockRects.end();itr++){
+			rectangle(input_clone,itr->tl(),itr->br(),cv::Scalar(0,0,255),1,1,0);
+		}
+		imshow("result!",input_clone);
+		waitKey(-1);
+		imwrite("result.jpg",input_clone);		
+	}else{
+		docTree.print();
+		cout<<"leaf's size is: "<<leafBlocks.size()<<endl;
+		std::vector<Rect> blockRects = boundBlock(docTree,leafNodes);
 
-	cout<<"leaf's size is: "<<leafBlocks.size()<<endl;
-	std::vector<Rect> blockRects = boundBlock(docTree,leafNodes);
-
-	for(std::vector<Rect>::const_iterator itr = blockRects.begin();itr!= blockRects.end();itr++){
-		rectangle(input_clone,itr->tl(),itr->br(),cv::Scalar(0,0,255),1,1,0);
+		for(std::vector<Rect>::const_iterator itr = blockRects.begin();itr!= blockRects.end();itr++){
+			rectangle(input_clone,itr->tl(),itr->br(),cv::Scalar(0,0,255),1,1,0);
+		}
+		imshow("result!",input_clone);
+		waitKey(-1);
+		imwrite("result.jpg",input_clone);	
 	}
-	imshow("result!",input_clone);
-	waitKey(-1);
-	imwrite("result.jpg",input_clone);
+
+	
 }
